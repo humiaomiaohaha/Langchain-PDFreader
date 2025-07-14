@@ -126,7 +126,7 @@ if inputs.shape[1] > 800:
 **解决方案：**
 ```python
 # 简化prompt模板
-# 修改前
+
 
 ```
 
