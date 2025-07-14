@@ -1,258 +1,258 @@
-# 📚 智能PDF阅读器
+# PDF阅读器项目Bug记录与解决方案
 
-一个基于LangChain的智能PDF阅读器，支持文档问答、向量搜索和多种语言模型后端。
+## 项目概述
+基于LangChain的智能PDF阅读器，支持多种语言模型后端（规则系统、本地Transformers、HuggingFace、OpenAI API）。
 
-## ✨ 功能特性
 
-- 📄 **PDF文档处理**: 自动加载和解析PDF文件
-- 🔍 **智能问答**: 基于文档内容进行问答
-- 🗄️ **向量数据库**: 使用FAISS进行高效的相似性搜索
-- 🤖 **多模型支持**: 支持规则系统、本地Transformers、HuggingFace、OpenAI API
-- 💻 **命令行工具**: 支持命令行交互
-- 🔧 **可配置**: 支持自定义模型和参数
+## LangChain兼容性问题
 
-## 🛠️ 技术栈
-
-- **LangChain**: 大语言模型应用框架
-- **FAISS**: 高效的向量相似性搜索
-- **Sentence Transformers**: 文本嵌入模型
-- **PyPDF**: PDF文档处理
-- **Transformers**: 本地语言模型
-- **HuggingFace**: 模型仓库和推理
-
-## 📦 安装
-
-### 1. 克隆项目
-
-```bash
-git clone <repository-url>
-cd langchain
+### Bug : Chain.__call__ 方法弃用警告
+**错误信息：**
+```
+LangChainDeprecationWarning: The method `Chain.__call__` was deprecated in langchain 0.1.0 and will be removed in 1.0. Use :meth:`~invoke` instead.
 ```
 
-### 2. 创建虚拟环境
+**原因：** LangChain版本更新，`__call__`方法被弃用。
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# 或
-.venv\Scripts\activate  # Windows
+**解决方案：**
+```python
+# 修改前
+result = self.qa_chain({"query": question})
+
+# 修改后
+result = self.qa_chain.invoke({"query": question})
 ```
 
-### 3. 安装依赖
-
-```bash
-pip install -r requirements.txt
+### Bug : Pydantic版本兼容性警告
+**错误信息：**
+```
+LangChainDeprecationWarning: As of langchain-core 0.3.0, LangChain uses pydantic v2 internally. The langchain_core.pydantic_v1 module was a compatibility shim for pydantic v1, and should no longer be used.
 ```
 
-### 4. 安装额外依赖（可选）
+**原因：** LangChain升级到pydantic v2，但有一些组件还使用v1。
 
-如果需要使用本地Transformers模型：
+**解决方案：**
+```python
+# 更新导入
+from pydantic import BaseModel  # 使用v2
+# 而不是
+from langchain_core.pydantic_v1 import BaseModel  # 已弃用
+```
 
+---
+
+## 模型加载与初始化问题
+
+### Bug : 缺少accelerate包
+**错误信息：**
+```
+Using a `device_map`, `tp_plan`, `torch.device` context manager or setting `torch.set_default_device(device)` requires `accelerate`. You can install it with `pip install accelerate`
+```
+
+**原因：** 使用`device_map="auto"`需要accelerate包支持。
+
+**解决方案：**
 ```bash
 pip install accelerate
 ```
 
-## 🚀 使用方法
-
-### 命令行版本
-
-1. **基本使用**：
-```bash
-python cli.py --interactive
+### Bug : 模型下载网络连接失败
+**错误信息：**
+```
+ProtocolError('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。'))
 ```
 
-2. **指定PDF文件夹**：
-```bash
-python cli.py --pdf-folder pdfs --interactive
+**原因：** 网络连接不稳定。
+
+**解决方案：**
+
+# 从本地缓存加载
+
+
+
+### Bug : 模型需要trust_remote_code参数
+**错误信息：**
+```
+The repository THUDM/chatglm2-6b contains custom code which must be executed to correctly load the model. Please pass the argument `trust_remote_code=True`
 ```
 
-3. **使用本地嵌入模型**：
-```bash
-python cli.py --embedding-model D:/Embedding/Embedding --interactive
-```
+**原因：** 好像有一些模型包含自定义代码，需要显式信任。
 
-4. **使用HuggingFace模型**：
-```bash
-python cli.py --embedding-model D:/Embedding/Embedding --llm-model "hf:gpt2" --interactive
-```
-
-5. **使用OpenAI API**：
-```bash
-# 设置环境变量
-export OPENAI_API_KEY="your-api-key"
-python cli.py --llm-model openai --interactive
-```
-
-6. **自定义参数**：
-```bash
-python cli.py \
-    --pdf-folder my_pdfs \
-    --embedding-model all-MiniLM-L6-v2 \
-    --llm-model "hf:gpt2" \
-    --chunk-size 500 \
-    --chunk-overlap 50 \
-    --interactive
-```
-
-## 📁 项目结构
-
-```
-langchain/
-├── cli.py              # 命令行工具
-├── pdf_reader.py       # PDF处理核心类
-├── llm_interface.py    # 语言模型接口
-├── requirements.txt    # 项目依赖
-├── README.md          # 项目说明
-├── bug.md             # Bug记录和解决方案
-├── pdfs/              # PDF文件存储文件夹
-└── vectorstore/       # 向量数据库存储文件夹
-```
-
-## ⚙️ 配置选项
-
-### 嵌入模型
-
-支持多种Sentence Transformers模型：
-
-- `all-MiniLM-L6-v2` (默认，轻量级)
-- `paraphrase-multilingual-MiniLM-L12-v2` (多语言支持)
-- `all-mpnet-base-v2` (高质量)
-- 本地模型路径 (如 `D:/Embedding/Embedding`)
-
-### 语言模型
-
-支持多种模型类型：
-
-#### 1. 规则系统 (默认)
-```bash
-python cli.py --llm-model rule_based --interactive
-```
-
-#### 2. HuggingFace模型
-```bash
-# 小模型
-python cli.py --llm-model "hf:gpt2" --interactive
-
-# 中文模型 (需要足够内存)
-python cli.py --llm-model "hf:THUDM/chatglm2-6b" --interactive
-
-# 对话模型
-python cli.py --llm-model "hf:microsoft/DialoGPT-medium" --interactive
-```
-
-#### 3. 本地Transformers模型
-```bash
-python cli.py --llm-model "local:D:/models/your-model" --interactive
-```
-
-#### 4. OpenAI API
-```bash
-export OPENAI_API_KEY="your-api-key"
-python cli.py --llm-model openai --interactive
-```
-
-### 文档分割参数
-
-- **块大小 (chunk_size)**: 文档分割的块大小，默认1000字符
-- **块重叠 (chunk_overlap)**: 相邻块的重叠大小，默认200字符
-
-## 🔧 高级配置
-
-### 自定义嵌入模型
-
+**解决方案：**
 ```python
-from pdf_reader import PDFReader
-
-# 使用自定义嵌入模型
-reader = PDFReader(embedding_model="your-custom-model")
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    device_map="auto",
+    trust_remote_code=True  # 添加此参数
+)
 ```
 
-### 自定义语言模型
 
+
+---
+
+## Prompt工程问题
+
+### Bug : Prompt过长导致模型无法处理
+**错误信息：**
+```
+Token indices sequence length is longer than the specified maximum sequence length for this model (1840 > 1024). Running this sequence through the model will result in indexing errors
+Input length of input_ids is 1840, but `max_length` is set to 512.
+```
+
+**原因：** RetrievalQA把所有文档都拼成大prompt了，超出小模型的处理能力。
+
+**解决方案：**
 ```python
-from llm_interface import LLMInterface
+# 1. 减少检索文档数量
+retriever=vectorstore.as_retriever(search_kwargs={"k": 1})
 
-# 使用自定义语言模型
-llm = LLMInterface(model_name="your-custom-model")
+# 2. 限制prompt长度
+max_prompt_length = 500
+if len(prompt) > max_prompt_length:
+    prompt = prompt[:max_prompt_length] + "..."
+
+# 3. 检查输入token长度
+if inputs.shape[1] > 800:
+    inputs = inputs[:, -800:]
+
 ```
 
-## 🐛 常见问题
+### Bug : Prompt格式不适合小模型
+**问题描述：** 复杂的prompt模板导致小模型瞎说。
 
-### 1. 模型下载失败
+**原因：** 小模型（如GPT-2）无法理解复杂的指令格式。
 
-**问题**: 首次运行时模型下载失败
+**解决方案：**
+```python
+# 简化prompt模板
+# 修改前
 
-**解决方案**:
-```bash
-# 手动下载嵌入模型
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
-
-# 或使用本地模型
-python cli.py --embedding-model D:/Embedding/Embedding --interactive
 ```
 
-### 2. 内存不足
+### Bug : 中文Prompt与英文模型不兼容
+**问题描述：** 中文prompt输入英文模型（如GPT-2）导致输出乱码或无意义内容。
 
-**问题**: 处理大文件时内存不足
+**原因：** GPT-2是英文模型，无法理解中文prompt。
 
-**解决方案**:
-- 减小chunk_size参数
-- 使用更小的嵌入模型
-- 分批处理文档
+**解决方案：**
+```python
+# 1. 换成中文模型
 
-### 3. 模型输出无意义
+# 2. 或使用API模型
+model_name = "openai"  # 支持多语言
+```
 
-**问题**: 小模型输出无意义内容
+### Bug : Prompt中的特殊字符导致tokenization错误
+**错误信息：**
+```
+Tokenization error: unexpected character
+```
 
-**解决方案**:
-- 使用更适合的模型
-- 简化prompt格式
-- 限制context长度
+**原因：** Prompt中包含特殊字符或格式。
 
-### 4. PDF解析错误
+**解决方案：**
+```python
+# 移除prompt中的特殊字符
 
-**问题**: 某些PDF文件无法正确解析
+```
 
-**解决方案**:
-- 确保PDF文件没有加密
-- 尝试使用OCR工具预处理PDF
-- 检查PDF文件是否损坏
+---
 
-## 📊 性能优化
+## 网络连接问题
 
-### 1. 硬件要求
+### Bug : HuggingFace Hub缓存警告
+**错误信息：**
+```
+UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\...\.cache\huggingface\hub\models--gpt2.
+```
 
-- **CPU**: 建议4核以上
-- **内存**: 建议8GB以上
-- **存储**: 根据PDF文件大小而定
+**原因：** Windows系统不支持symlinks，导致缓存效率降低。
 
-### 2. 优化建议
+**解决方案：**
+```
 
-- 使用SSD存储提高I/O性能
-- 增加内存以提高处理速度
-- 使用GPU加速（如果可用）
+# 在代码中设置
+import os
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+```
 
-### 3. 模型选择建议
+### Bug : 模型下载超时
+**错误信息：**
+```
+Connection timeout after 30 seconds
+```
 
-- **测试环境**: `hf:gpt2` (小模型，快速测试)
-- **中文环境**: `hf:THUDM/chatglm2-6b` (需要16GB+内存)
-- **生产环境**: `openai` (API模型，稳定可靠)
+**原因：** 网络连接慢或模型文件过大。
 
-## 🤝 贡献
+**解决方案：**
+```python
+# 
+#设置代理
+```
 
-欢迎提交Issue和Pull Request！
+---
 
-### 开发环境设置
+## 自定义LLM接口问题
 
-1. 克隆项目
-2. 创建虚拟环境
-3. 安装开发依赖
-4. 运行测试
+### Bug : 自定义LLM不是Runnable实例
+**错误信息：**
+```
+2 validation errors for LLMChain
+llm.is-instance[Runnable]
+Input should be an instance of Runnable
+```
 
-## 📄 许可证
+**原因：** 自定义LLM类没有正确实现LangChain的Runnable接口。
 
-MIT License
+**解决方案：**
+```python
+# 使用LangChain官方的HuggingFacePipeline
+```
 
-## 📞 联系方式
+### Bug : 自定义LLM返回空字符串
+**问题描述：** 自定义LLM能独立工作，但在LangChain链中返回空字符串。
 
-如有问题，请提交Issue或联系开发者。 
+**原因：** LangChain期望特定的返回格式，自定义LLM格式不匹配。
+
+**解决方案：**
+```python
+# 确保返回正确的格式
+#改成
+def invoke(self, input_data, config=None):
+    if isinstance(input_data, dict):
+        prompt = input_data.get("text", str(input_data))
+    else:
+        prompt = str(input_data)
+    
+    response = self.__call__(prompt)
+    return {"text": response}  # 返回字典格式
+```
+
+---
+
+## 模型输出质量问题
+
+
+### Bug : 模型输出被截断
+**问题描述：** 模型回答不完整，被强制截断。
+
+**原因：** `max_tokens`设置过小。
+
+**解决方案：**
+```python
+# 增加`max_tokens
+```
+
+### Bug : 模型输出包含输入内容
+**问题描述：** 输出包含完整的输入prompt，而不是只返回新生成的内容。
+
+**原因：** 没有正确移除输入部分。
+
+**解决方案：**
+```python
+# 移除输入部分
+response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+if response.startswith(prompt):
+    response = response[len(prompt):].strip()
+```
